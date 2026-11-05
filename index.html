@@ -1,0 +1,571 @@
+<<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Nos vamos de casa rural! - Escapada 2027</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js para interactividad reactiva -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rural: {
+                            50: '#f4f7f4',
+                            100: '#e5eee5',
+                            500: '#3b6e48',
+                            600: '#2e5638',
+                            700: '#22412b',
+                            amber: '#d97706'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        heading: ['"Outfit"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-rural-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between" x-data="app()" x-init="init()">
+
+    <!-- Header / Hero Section -->
+    <header class="bg-gradient-to-br from-rural-700 to-rural-600 text-white shadow-xl relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        <div class="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center relative z-10">
+            <span class="bg-emerald-500/20 border border-emerald-400/30 text-emerald-100 text-xs md:text-sm font-semibold px-3 py-1 rounded-full uppercase tracking-wider mb-3 inline-block">
+                <i class="fa-solid fa-tree mr-1"></i> Enero y Febrero 2027
+            </span>
+            <h1 class="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-3">¡Nos vamos de casa rural!</h1>
+            <p class="text-rural-100 text-base md:text-lg max-w-xl mx-auto mb-6">Vamos a encontrar el finde en el que podamos estar todos.</p>
+            
+            <!-- Quick Share Actions -->
+            <div class="flex flex-wrap justify-center gap-3">
+                <button @click="copyLink()" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition flex items-center gap-2 backdrop-blur-sm">
+                    <i class="fa-solid fa-link"></i> Copiar enlace
+                </button>
+                <a :href="whatsappShareUrl()" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition flex items-center gap-2 shadow-lg">
+                    <i class="fa-brands fa-whatsapp text-lg"></i> Compartir en WhatsApp
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-4 py-8 w-full flex-grow">
+
+        <!-- Configuración de Supabase Modal / Banner si faltan credenciales -->
+        <template x-if="showConfigModal">
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl mb-6 shadow-sm">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-amber-800">Configuración de Supabase requerida</h3>
+                        <div class="mt-2 text-sm text-amber-700">
+                            <p>Introduce tus credenciales de Supabase para activar la sincronización en tiempo real.</p>
+                            <div class="mt-3 flex flex-col sm:flex-row gap-2">
+                                <input type="text" x-model="tempUrl" placeholder="URL de Supabase (https://xxx.supabase.co)" class="p-2 text-xs rounded border border-amber-300 w-full">
+                                <input type="text" x-model="tempKey" placeholder="Anon Key" class="p-2 text-xs rounded border border-amber-300 w-full">
+                                <button @click="saveSupabaseConfig()" class="bg-amber-600 text-white px-4 py-2 text-xs font-bold rounded hover:bg-amber-700">Guardar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-200 mb-8">
+            <button @click="activeTab = 'vote'" :class="activeTab === 'vote' ? 'border-rural-600 text-rural-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700'" class="flex-1 py-3 px-4 text-center border-b-2 font-heading transition text-sm md:text-base flex items-center justify-center gap-2">
+                <i class="fa-solid fa-calendar-check"></i> Votar mi disponibilidad
+            </button>
+            <button @click="activeTab = 'results'" :class="activeTab === 'results' ? 'border-rural-600 text-rural-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700'" class="flex-1 py-3 px-4 text-center border-b-2 font-heading transition text-sm md:text-base flex items-center justify-center gap-2">
+                <i class="fa-solid fa-chart-pie"></i> Resultados y Estadísticas <span class="bg-rural-100 text-rural-700 text-xs px-2 py-0.5 rounded-full" x-text="participants.length"></span>
+            </button>
+        </div>
+
+        <!-- TAB 1: VOTE / FORM -->
+        <div x-show="activeTab === 'vote'" x-transition.opacity>
+            
+            <!-- Instrucciones -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+                <h2 class="font-heading text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-rural-500"></i> ¿Cómo participar?
+                </h2>
+                <ol class="list-decimal list-inside text-sm text-slate-600 space-y-1">
+                    <li>Escribe tu nombre o apodo.</li>
+                    <li>Haz clic en los fines de semana que tengas libres en enero y febrero de 2027.</li>
+                    <li>Pulsa <span class="font-semibold text-slate-700">"Guardar mi disponibilidad"</span>. ¡Listo en 30 segundos!</li>
+                </ol>
+            </div>
+
+            <!-- Formulario principal -->
+            <form @submit.prevent="saveVote()" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+                
+                <!-- Input Nombre -->
+                <div class="mb-6">
+                    <label class="block font-heading text-sm font-semibold text-slate-700 mb-2">
+                        Tu Nombre o Apodo <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" x-model.trim="userName" placeholder="Ej: María García" required
+                            class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rural-500 focus:bg-white transition text-slate-800 font-medium">
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Si ya votaste antes, al escribir tu mismo nombre podrás actualizar tus fechas.</p>
+                </div>
+
+                <!-- Calendario de Fines de Semana -->
+                <div class="space-y-6 mb-8">
+                    
+                    <!-- ENERO 2027 -->
+                    <div>
+                        <h3 class="font-heading font-bold text-slate-700 text-base mb-3 flex items-center gap-2">
+                            <i class="fa-regular fa-calendar text-rural-500"></i> Enero 2027
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <template x-for="weekend in weekends.january" :key="weekend.id">
+                                <div @click="toggleWeekend(weekend.id)"
+                                    :class="selectedWeekends.includes(weekend.id) ? 'bg-rural-600 text-white border-rural-600 shadow-md ring-2 ring-rural-500/20' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
+                                    class="cursor-pointer border rounded-xl p-4 transition duration-200 flex items-center justify-between select-none">
+                                    <div>
+                                        <div class="font-heading font-bold text-sm" x-text="weekend.label"></div>
+                                        <div class="text-xs opacity-80" x-text="weekend.sublabel"></div>
+                                    </div>
+                                    <div class="w-6 h-6 rounded-full border flex items-center justify-center transition"
+                                        :class="selectedWeekends.includes(weekend.id) ? 'bg-white text-rural-600 border-white' : 'border-slate-300 bg-white'">
+                                        <i class="fa-solid fa-check text-xs" x-show="selectedWeekends.includes(weekend.id)"></i>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- FEBRERO 2027 -->
+                    <div>
+                        <h3 class="font-heading font-bold text-slate-700 text-base mb-3 flex items-center gap-2">
+                            <i class="fa-regular fa-calendar text-rural-500"></i> Febrero 2027
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <template x-for="weekend in weekends.february" :key="weekend.id">
+                                <div @click="toggleWeekend(weekend.id)"
+                                    :class="selectedWeekends.includes(weekend.id) ? 'bg-rural-600 text-white border-rural-600 shadow-md ring-2 ring-rural-500/20' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'"
+                                    class="cursor-pointer border rounded-xl p-4 transition duration-200 flex items-center justify-between select-none">
+                                    <div>
+                                        <div class="font-heading font-bold text-sm" x-text="weekend.label"></div>
+                                        <div class="text-xs opacity-80" x-text="weekend.sublabel"></div>
+                                    </div>
+                                    <div class="w-6 h-6 rounded-full border flex items-center justify-center transition"
+                                        :class="selectedWeekends.includes(weekend.id) ? 'bg-white text-rural-600 border-white' : 'border-slate-300 bg-white'">
+                                        <i class="fa-solid fa-check text-xs" x-show="selectedWeekends.includes(weekend.id)"></i>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" :disabled="isSubmitting"
+                    class="w-full bg-rural-600 hover:bg-rural-700 active:bg-rural-800 text-white font-heading font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 text-base">
+                    <i class="fa-solid fa-floppy-disk" x-show="!isSubmitting"></i>
+                    <i class="fa-solid fa-spinner fa-spin" x-show="isSubmitting"></i>
+                    <span x-text="isSubmitting ? 'Guardando...' : 'Guardar mi disponibilidad'"></span>
+                </button>
+
+            </form>
+        </div>
+
+        <!-- TAB 2: RESULTS -->
+        <div x-show="activeTab === 'results'" x-transition.opacity>
+            
+            <!-- Mejor Fin de Semana / Destacado -->
+            <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl p-6 shadow-md mb-8 relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl font-bold">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div class="relative z-10">
+                    <span class="bg-white/20 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
+                        <i class="fa-solid fa-crown mr-1"></i> Fin de semana ganador
+                    </span>
+                    <h3 class="font-heading text-2xl md:text-3xl font-bold mb-1" x-text="bestWeekend ? bestWeekend.label + ' (' + bestWeekend.sublabel + ')' : 'Calculando...'"></h3>
+                    <p class="text-amber-100 text-sm" x-text="bestWeekend ? '¡Es el momento perfecto! Coinciden ' + bestWeekend.count + ' de ' + participants.length + ' participantes.' : 'Aún no hay suficientes votos'"></p>
+                </div>
+            </div>
+
+            <!-- Cuadrícula Visual de Fechas con Conteo -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8">
+                <h3 class="font-heading text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-simple text-rural-500"></i> Disponibilidad por Fin de Semana
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <template x-for="weekend in allWeekendsWithCounts" :key="weekend.id">
+                        <div class="border border-slate-200 rounded-xl p-4 transition hover:shadow-sm" :class="weekend.count === participants.length && participants.length > 0 ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50'">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="text-xs font-bold text-rural-600 uppercase tracking-wider" x-text="weekend.month"></span>
+                                    <h4 class="font-heading font-bold text-slate-800 text-base" x-text="weekend.label"></h4>
+                                </div>
+                                <span class="text-sm font-bold px-2.5 py-1 rounded-lg"
+                                    :class="weekend.count > 0 ? 'bg-rural-600 text-white' : 'bg-slate-200 text-slate-600'">
+                                    <span x-text="weekend.count"></span>/<span x-text="participants.length"></span>
+                                </span>
+                            </div>
+                            
+                            <!-- Barra de progreso -->
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-2">
+                                <div class="bg-rural-500 h-full transition-all duration-500" :style="'width: ' + (participants.length ? (weekend.count / participants.length) * 100 : 0) + '%'"></div>
+                            </div>
+
+                            <!-- Avatares o nombres de quiénes van -->
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <template x-for="name in weekend.attendees" :key="name">
+                                    <span class="bg-white border border-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-md font-medium shadow-2xs" x-text="name"></span>
+                                </template>
+                                <span x-show="weekend.attendees.length === 0" class="text-xs text-slate-400 italic">Nadie disponible aún</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Tabla de Participantes -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100">
+                    <h3 class="font-heading text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-rural-500"></i> Listado de Participantes (<span x-text="participants.length"></span>)
+                    </h3>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
+                                <th class="py-3 px-6">Participante</th>
+                                <th class="py-3 px-6">Fines de semana elegidos</th>
+                                <th class="py-3 px-6 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <template x-for="p in participants" :key="p.id">
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="py-4 px-6 font-heading font-bold text-slate-800 flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-rural-100 text-rural-700 flex items-center justify-center font-bold text-xs" x-text="p.name.substring(0,2).toUpperCase()"></div>
+                                        <span x-text="p.name"></span>
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        <div class="flex flex-wrap gap-1">
+                                            <template x-for="wid in p.weekends">
+                                                <span class="bg-rural-50 text-rural-700 border border-rural-200 text-xs px-2 py-0.5 rounded-md font-medium" x-text="getWeekendLabel(wid)"></span>
+                                            </template>
+                                            <span x-show="!p.weekends || p.weekends.length === 0" class="text-slate-400 italic text-xs">Ninguno seleccionado</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-6 text-right">
+                                        <button @click="editParticipant(p)" class="text-slate-400 hover:text-rural-600 transition p-1" title="Editar mi voto">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button @click="deleteParticipant(p.id)" class="text-slate-400 hover:text-red-600 transition p-1 ml-2" title="Eliminar">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-if="participants.length === 0">
+                                <tr>
+                                    <td colspan="3" class="py-8 text-center text-slate-400">
+                                        Aún no hay respuestas registradas. ¡Sé el primero en votar!
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+        <p>Organizador de Escapadas Rurales 🌲 Creado para pasarlo bien con amigos.</p>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show" x-transition.opacity class="fixed bottom-4 right-4 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm">
+        <i :class="toast.icon" class="text-emerald-400"></i>
+        <span x-text="toast.message"></span>
+    </div>
+
+    <!-- Supabase Client & App Logic Script -->
+    <script>
+        const SUPABASE_URL_DEFAULT = 'https://TU_SUPABASE_URL.supabase.co';
+        const SUPABASE_KEY_DEFAULT = 'TU_SUPABASE_ANON_KEY';
+
+        function app() {
+            return {
+                activeTab: 'vote',
+                userName: '',
+                selectedWeekends: [],
+                participants: [],
+                isSubmitting: false,
+                showConfigModal: false,
+                tempUrl: '',
+                tempKey: '',
+                supabaseClient: null,
+                toast: {
+                    show: false,
+                    message: '',
+                    icon: 'fa-solid fa-check-circle'
+                },
+
+                weekends: {
+                    january: [
+                        { id: 'jan-1', label: '1 - 3 Ene', sublabel: 'Viernes a Domingo', month: 'Enero' },
+                        { id: 'jan-2', label: '8 - 10 Ene', sublabel: 'Viernes a Domingo', month: 'Enero' },
+                        { id: 'jan-3', label: '15 - 17 Ene', sublabel: 'Viernes a Domingo', month: 'Enero' },
+                        { id: 'jan-4', label: '22 - 24 Ene', sublabel: 'Viernes a Domingo', month: 'Enero' },
+                        { id: 'jan-5', label: '29 - 31 Ene', sublabel: 'Viernes a Domingo', month: 'Enero' }
+                    ],
+                    february: [
+                        { id: 'feb-1', label: '5 - 7 Feb', sublabel: 'Viernes a Domingo', month: 'Febrero' },
+                        { id: 'feb-2', label: '12 - 14 Feb', sublabel: 'Viernes a Domingo', month: 'Febrero' },
+                        { id: 'feb-3', label: '19 - 21 Feb', sublabel: 'Viernes a Domingo', month: 'Febrero' },
+                        { id: 'feb-4', label: '26 - 28 Feb', sublabel: 'Viernes a Domingo', month: 'Febrero' }
+                    ]
+                },
+
+                init() {
+                    let url = localStorage.getItem('supabase_url') || SUPABASE_URL_DEFAULT;
+                    let key = localStorage.getItem('supabase_key') || SUPABASE_KEY_DEFAULT;
+
+                    if (url.includes('TU_SUPABASE')) {
+                        this.showConfigModal = true;
+                        // Cargar datos simulados en memoria si no hay supabase configurado
+                        this.loadMockData();
+                    } else {
+                        this.initSupabase(url, key);
+                    }
+                },
+
+                initSupabase(url, key) {
+                    try {
+                        this.supabaseClient = supabase.createClient(url, key);
+                        this.fetchParticipants();
+                        this.setupRealtime();
+                    } catch (e) {
+                        console.error('Error al iniciar Supabase:', e);
+                        this.loadMockData();
+                    }
+                },
+
+                saveSupabaseConfig() {
+                    if (!this.tempUrl || !this.tempKey) {
+                        alert('Por favor introduce ambos campos');
+                        return;
+                    }
+                    localStorage.setItem('supabase_url', this.tempUrl);
+                    localStorage.setItem('supabase_key', this.tempKey);
+                    this.showConfigModal = false;
+                    this.initSupabase(this.tempUrl, this.tempKey);
+                    this.showToast('¡Configuración guardada!');
+                },
+
+                loadMockData() {
+                    const saved = localStorage.getItem('mock_participants');
+                    if (saved) {
+                        this.participants = JSON.parse(saved);
+                    } else {
+                        this.participants = [
+                            { id: '1', name: 'Laura Gómez', weekends: ['jan-2', 'jan-3', 'feb-1'] },
+                            { id: '2', name: 'Carlos Ruiz', weekends: ['jan-3', 'feb-1', 'feb-2'] }
+                        ];
+                    }
+                },
+
+                async fetchParticipants() {
+                    if (!this.supabaseClient) return;
+                    const { data, error } = await this.supabaseClient
+                        .from('participants')
+                        .select('*');
+                    
+                    if (error) {
+                        console.error('Error fetching:', error);
+                    } else if (data) {
+                        this.participants = data;
+                    }
+                },
+
+                setupRealtime() {
+                    if (!this.supabaseClient) return;
+                    this.supabaseClient
+                        .channel('public:participants')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, payload => {
+                            this.fetchParticipants();
+                        })
+                        .subscribe();
+                },
+
+                toggleWeekend(id) {
+                    if (this.selectedWeekends.includes(id)) {
+                        this.selectedWeekends = this.selectedWeekends.filter(item => item !== id);
+                    } else {
+                        this.selectedWeekends.push(id);
+                    }
+                },
+
+                async saveVote() {
+                    if (!this.userName) {
+                        alert('Por favor, introduce tu nombre.');
+                        return;
+                    }
+
+                    this.isSubmitting = true;
+
+                    const existingIndex = this.participants.findIndex(p => p.name.toLowerCase() === this.userName.toLowerCase());
+                    
+                    let payloadData = {
+                        name: this.userName,
+                        weekends: this.selectedWeekends
+                    };
+
+                    if (this.supabaseClient && !this.showConfigModal) {
+                        try {
+                            if (existingIndex !== -1) {
+                                const existingId = this.participants[existingIndex].id;
+                                const { error } = await this.supabaseClient
+                                    .from('participants')
+                                    .update({ weekends: this.selectedWeekends })
+                                    .eq('id', existingId);
+                                if (error) throw error;
+                            } else {
+                                const { error } = await this.supabaseClient
+                                    .from('participants')
+                                    .insert([payloadData]);
+                                if (error) throw error;
+                            }
+                            await this.fetchParticipants();
+                        } catch (e) {
+                            console.error('Error saving to Supabase:', e);
+                            alert('Hubo un error al guardar en la base de datos.');
+                        }
+                    } else {
+                        // Modo Mock Local
+                        if (existingIndex !== -1) {
+                            this.participants[existingIndex].weekends = this.selectedWeekends;
+                        } else {
+                            this.participants.push({
+                                id: Date.now().toString(),
+                                name: this.userName,
+                                weekends: this.selectedWeekends
+                            });
+                        }
+                        localStorage.setItem('mock_participants', JSON.stringify(this.participants));
+                    }
+
+                    this.isSubmitting = false;
+                    this.showToast('¡Disponibilidad guardada correctamente!');
+                    this.activeTab = 'results';
+                },
+
+                editParticipant(p) {
+                    this.userName = p.name;
+                    this.selectedWeekends = [...p.weekends];
+                    this.activeTab = 'vote';
+                },
+
+                async deleteParticipant(id) {
+                    if (!confirm('¿Seguro que quieres eliminar este participante?')) return;
+
+                    if (this.supabaseClient && !this.showConfigModal) {
+                        const { error } = await this.supabaseClient
+                            .from('participants')
+                            .delete()
+                            .eq('id', id);
+                        if (error) {
+                            console.error('Error deleting:', error);
+                        } else {
+                            this.fetchParticipants();
+                        }
+                    } else {
+                        this.participants = this.participants.filter(p => p.id !== id);
+                        localStorage.setItem('mock_participants', JSON.stringify(this.participants));
+                    }
+                    this.showToast('Participante eliminado');
+                },
+
+                getWeekendLabel(id) {
+                    const all = [...this.weekends.january, ...this.weekends.february];
+                    const found = all.find(w => w.id === id);
+                    return found ? found.label : id;
+                },
+
+                get allWeekendsWithCounts() {
+                    const all = [...this.weekends.january, ...this.weekends.february];
+                    return all.map(w => {
+                        const attendees = this.participants
+                            .filter(p => p.weekends && p.weekends.includes(w.id))
+                            .map(p => p.name);
+                        return {
+                            ...w,
+                            count: attendees.length,
+                            attendees
+                        };
+                    });
+                },
+
+                get bestWeekend() {
+                    const list = this.allWeekendsWithCounts;
+                    if (list.length === 0) return null;
+                    let best = list[0];
+                    for (let item of list) {
+                        if (item.count > best.count) {
+                            best = item;
+                        }
+                    }
+                    return best.count > 0 ? best : null;
+                },
+
+                copyLink() {
+                    navigator.clipboard.writeText(window.location.href);
+                    this.showToast('¡Enlace copiado al portapapeles!');
+                },
+
+                whatsappShareUrl() {
+                    const text = encodeURIComponent('¡Hola amigos! 👋 Vamos a organizar la escapada a la casa rural para enero y febrero de 2027. Entrad en este enlace para marcar vuestros días libres: ' + window.location.href);
+                    return 'https://api.whatsapp.com/send?text=' + text;
+                },
+
+                showToast(message, icon = 'fa-solid fa-circle-check') {
+                    this.toast.message = message;
+                    this.toast.icon = icon;
+                    this.toast.show = true;
+                    setTimeout(() => {
+                        this.toast.show = false;
+                    }, 3000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
